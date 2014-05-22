@@ -11,7 +11,7 @@ sampleSubmission <- read.csv("C:/Users/User Files/Desktop/sampleSubmission.csv")
 
 smallTestSet <- vector()
 for(j in 1:7){
-  smallTestSet <- c(smallTestSet,sample(which(response==j),size=216))
+  smallTestSet <- c(smallTestSet,sample(which(train[,56]==j),size=216))
 }
 newTrain <- train[-smallTestSet,]
 newTest <- train[smallTestSet,]
@@ -39,7 +39,7 @@ for(k in 1:100){
   }
 }
 bestK <- sort(successRate,index.return=TRUE,decreasing=TRUE)$ix[1]
-testPred <- knn(train=trainPredictors,test=testPredictors,cl=trainResponse)
+testPred <- knn(train=trainPredictors,test=testPredictors,cl=trainResponse,k=1)
 mean(testPred==testResponse)
 
 
@@ -53,8 +53,109 @@ write.table(submissions, file = "submission.csv", sep = ",", col.names = c("Id",
 
 
 
+################################################################################
 
 
+
+library(glmnet)
+
+logistic.cv = cv.glmnet(x = as.matrix(trainPredictors), y = trainResponse, family = "multinomial", alpha = 0,  nfolds = 10, type.measure = "class")
+lambda = logistic.cv$lambda.min
+
+
+
+my.logistic.fit = glmnet(x = as.matrix(trainPredictors), y = trainResponse, family = "multinomial", alpha = 0)
+logisitcpredvals <- predict(my.logistic.fit,as.matrix(testPredictors),type='class')
+
+thebest <- vector()
+for(l in 1:ncol(logisitcpredvals)){
+  thebest[l] <- mean(logisitcpredvals[,l]==testResponse)
+}
+
+
+mean(logisitcpredvals==testResponse)
+
+
+
+
+
+#########################################################################################
+
+
+
+#Tree Methods
+
+
+
+
+
+
+library(rpart)
+
+
+mydata <- cbind(as.factor(trainResponse),trainPredictors)
+colnames(mydata)[1] <- "response"
+
+tree <- rpart(response~.,data=mydata, control = rpart.control(minsplit = 2, minbucket = 1, cp = 0))
+plotcp(tree)
+tree.pruned = prune(tree, cp = tree$cptable[66,1])
+
+
+treePred <- predict(tree.pruned,testPredictors,type="class")
+
+mean(testResponse==treePred)
+
+
+
+
+
+
+
+############################################################
+
+
+library(randomForest)
+?randomForest
+rf <- randomForest(x=trainPredictors,y=as.factor(trainResponse),ntree=1000)
+randomForestPredictions <- predict(rf,as.matrix(testPredictors))
+
+
+
+mean(randomForestPredictions==testResponse)
+
+
+rfPredictions <- predict(rf,as.matrix(test))
+
+
+
+
+
+submissions = cbind(test[,1], rfPredictions)
+write.table(submissions, file = "randomForest.csv", sep = ",", col.names = c("Id", "Cover_Type"), row.names = F)
+
+
+
+
+
+
+
+
+
+
+#############################################################################
+
+
+
+
+
+library(kernlab)
+
+
+polyModel <- ksvm(x=as.matrix(trainPredictors),y=as.factor(trainResponse),kernel='polydot',kpar=list(degree=2,scale=.001,offset=1), C=1)
+
+
+polyPred <- predict(polyModel,newdata=testPredictors)
+mean(polyPred==testResponse)
 
 
 
