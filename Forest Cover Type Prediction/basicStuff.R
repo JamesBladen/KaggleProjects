@@ -150,14 +150,28 @@ write.table(submissions, file = "randomForest.csv", sep = ",", col.names = c("Id
 
 library(kernlab)
 
-
-polyModel <- ksvm(x=as.matrix(trainPredictors),y=as.factor(trainResponse),kernel='polydot',kpar=list(degree=2,scale=.001,offset=1), C=1)
-
-
-polyPred <- predict(polyModel,newdata=testPredictors)
-mean(polyPred==testResponse)
+topVariables <- order(rf$importance,decreasing=TRUE)[1:10]
 
 
+counter <- 1
+
+ksvmSuccess <- matrix(0,nrow=100,ncol=4)
+for(degree in 2:7){
+  for(scale in c(.001,.01,.1)){
+    for (C in c(.1,.5,1)){
+      polyModel <- ksvm(x=as.matrix(trainPredictors[,topVariables]),y=as.factor(trainResponse),kernel='polydot',kpar=list(degree=degree,scale=scale,offset=1), C=C)
+      polyPred <- predict(polyModel,newdata=testPredictors[,topVariables])
+      correct <- mean(polyPred==testResponse)
+      ksvmSuccess[counter,1] <- degree
+      ksvmSuccess[counter,2] <- scale
+      ksvmSuccess[counter,3] <- C
+      ksvmSuccess[counter,4] <- correct
+      
+      counter <- counter+1
+    }
+  }
+}
+colnames(ksvmSuccess) <- c("degree","Scale","Cost","Success Rate")
 
 
 
@@ -166,13 +180,16 @@ mean(polyPred==testResponse)
 
 
 
+order(ksvmSuccess[,4],decreasing=TRUE)
+
+
+
+polyModel <- ksvm(x=as.matrix(trainPredictors[,topVariables]),y=as.factor(trainResponse),kernel='polydot',kpar=list(degree=7,scale=.1,offset=1), C=.5)
+polyPred <- predict(polyModel,newdata=test[,topVariables])
 
 
 
 
 
-
-
-
-
-
+submissions = cbind(test[,1], polyPred)
+write.table(submissions, file = "polySVMPredictions.csv", sep = ",", col.names = c("Id", "Cover_Type"), row.names = F)
